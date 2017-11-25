@@ -1,0 +1,136 @@
+#!/bin/bash
+# my-youtube-dl : It downloads single file from youtube
+
+input_WebURL=""
+format_label=""
+file_nm=""
+
+mkdir -p ~/YouTube-dl
+cd ~/YouTube-dl
+if [ $? -ne 0 ]; then
+echo "Could not create directory and change directory"  
+exit 1
+fi
+
+input_WebURL="$(zenity  --entry --title "YouTube-DL" --text "Enter url:						" | sed 's/&list=.*//')"
+if [ -z "${input_WebURL// }" ]; then
+echo "Empty"
+exit 1
+fi
+clear
+tmp_location="/tmp/.my-youtube-dl"
+mkdir -p $tmp_location
+if [ $? -ne 0 ]; then
+echo "Could not create $tmp_location"
+exit 1
+fi
+
+#--------------------------------------------------------------------------
+date_stamp="$(date +%s)"
+#--------------------------------------------------------------------------
+dl_list="$tmp_location/"$date_stamp"-dl-list.tmp"
+disp_no="$tmp_location/"$date_stamp"-disp_no.tmp"
+disp_format="$tmp_location/"$date_stamp"-disp_format.tmp"
+disp_res="$tmp_location/"$date_stamp"-disp_res.tmp"
+disp_info="$tmp_location/"$date_stamp"-disp_info.tmp"
+disp_size="$tmp_location/"$date_stamp"-disp_size.tmp"
+disp_list="$tmp_location/"$date_stamp"-disp_list.tmp"
+disp_format_video_audio="$tmp_location/"$date_stamp"-disp_format_video_audio.tmp"
+disp_seqc_num="$tmp_location/"$date_stamp"-disp_seqc_num.tmp"
+#---------------------------------------------------------------------------
+echo "url	: $input_WebURL"
+youtube-dl -F "$input_WebURL" | grep "^[ 0-9]" > $dl_list
+if [ $? -ne 0 ]; then
+rm $dl_list
+echo "Error fetching url: $input_WebURL"
+exit 1
+fi
+
+#----------------------- video audio list---------------------------
+seq $(wc -l < $dl_list) > $disp_seqc_num
+cat $dl_list | cut -c 1-3 > $disp_no
+cat $dl_list | cut -c 14-17 > $disp_format
+cat $dl_list | cut -c 25-34 > $disp_res
+cat $dl_list | cut -c 36- > $disp_info
+rev $disp_info | cut -d" " -f1 | rev | sed '/iB/!s/.*/unknown/' > $disp_size
+sed '/video/s/.*/video-only/' $disp_info > $disp_format_video_audio
+sed -i '/audio/s/.*/audio-only/' $disp_format_video_audio
+sed -i '/video-only\|audio-only/!s/.*/Both/' $disp_format_video_audio
+paste -d"\n" $disp_seqc_num $disp_no $disp_format $disp_res $disp_size $disp_format_video_audio $disp_info > $disp_list
+
+# -------------------------audio only list---------------------------
+audio_dl_list="$tmp_location/"$date_stamp"-audio_dl-list.tmp"
+audio_disp_no="$tmp_location/"$date_stamp"-audio_disp_no.tmp"
+audio_disp_format="$tmp_location/"$date_stamp"-audio_disp_format.tmp"
+audio_disp_res="$tmp_location/"$date_stamp"-audio_disp_res.tmp"
+audio_disp_info="$tmp_location/"$date_stamp"-audio_disp_info.tmp"
+audio_disp_size="$tmp_location/"$date_stamp"-audio_disp_size.tmp"
+audio_disp_list="$tmp_location/"$date_stamp"-audio_disp_list.tmp"
+audio_disp_format_audio="$tmp_location/"$date_stamp"-audio_disp_format_audio.tmp"
+
+cat $dl_list | grep "audio only" > $audio_dl_list
+cat $audio_dl_list | cut -c 1-3 > $audio_disp_no
+cat $audio_dl_list | cut -c 14-17 > $audio_disp_format
+cat $audio_dl_list | cut -c 25-34 > $audio_disp_res
+cat $audio_dl_list | cut -c 36- > $audio_disp_info
+rev $audio_disp_info | cut -d" " -f1 | rev | sed '/iB/!s/.*/unknown/' > $audio_disp_size
+sed '/audio/s/.*/audio-only/' $audio_disp_info > $audio_disp_format_audio
+paste -d"\n" $audio_disp_no $audio_disp_format $audio_disp_res $audio_disp_size $audio_disp_format_audio $audio_disp_info > $audio_disp_list
+# ---------------------------------------------------------------
+
+format_label=$(cat $disp_list | zenity --list --title="Download" --column="Sl no." --column="Format no." --column="Format" --column="Resolution" --column="Size" --column="Video/Audio" --column="Info" --width=900 --height=500)
+clear
+format_label="$(echo $format_label | awk '{print $1;}')"
+if [ -z "${format_label// }" ]; then
+echo "format_label Not selected"
+exit 1
+fi
+
+format_number="$(sed -n "${format_label}p" $disp_no)"
+
+if [ -z "${format_number// }" ]; then
+echo "Empty format_number"
+rm $disp_seqc_num $disp_no $disp_format $disp_res $disp_info $disp_size $disp_list $dl_list $disp_format_video_audio
+exit 1
+fi
+
+format_line_number="$format_label"
+if [ ! -z "${format_line_number// }" ]; then
+is_video_only="$(sed -n "${format_line_number}p" $disp_format_video_audio)"
+fi
+
+if [ "$is_video_only" = "video-only" ]; then
+query_audio="$(zenity --question --text="You have selected video only. Want to download audio ?" && echo $? || echo $?)"
+if [ $query_audio = 0 ]; then
+format_audio_label=$(cat $audio_disp_list | zenity --list --title="Download" --column="Format no." --column="Format" --column="Resolution" --column="Size" --column="Video/Audio" --column="Info" --width=900 --height=500)
+fi
+elif [ "$is_video_only" = "audio-only" ]; then
+audio_check_for_audio_m4a="$(sed -n "${format_line_number}p" $disp_format)"
+if [ "${audio_check_for_audio_m4a// }" = "m4a" ]; then
+audio_thumb_write_m4a="--embed-thumbnail"
+fi
+fi
+
+file_nm="$(youtube-dl -f $format_number --get-filename -o "%(title)s.%(ext)s" "$input_WebURL")"
+
+if [ ! -z "${format_audio_label// }" ]; then
+format_number="$format_number+$format_audio_label"
+fi
+
+rm $disp_seqc_num $disp_no $disp_format $disp_res $disp_info $disp_size $disp_list $dl_list $disp_format_video_audio
+rm $audio_disp_no $audio_disp_format $audio_disp_res $audio_disp_info $audio_disp_size $audio_disp_list $audio_dl_list $audio_disp_format_audio
+
+clear
+
+echo "url: $input_WebURL"
+echo "file-name: $file_nm"
+echo "format number: $format_number"
+
+youtube-dl -c -f $format_number -o "%(title)s.%(ext)s" --external-downloader aria2c --external-downloader-args "-x 5" --write-srt --sub-lang en --embed-subs --add-metadata $audio_thumb_write_m4a "$input_WebURL"
+if [ $? -eq 0 ]; then
+notify-send "Download Complete" "$file_nm downloaded sucessfully" --icon=applications-internet
+else
+notify-send "Download Incomplete" "$file_nm download incomplete" --icon=dialog-error
+fi
+echo "END"
+sleep 3
