@@ -1,3 +1,12 @@
 # my-ydl
 my-youtube-dl : Bash script to download single file from youtube.
-It uses youtube-dl.
+
+Softwares used:
+bash
+coreutils
+gawk
+zenity
+xclip
+libnotify
+youtube-dl
+aria2c
