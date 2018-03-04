@@ -1,9 +1,16 @@
 #!/bin/bash
-# my-youtube-dl : It downloads single file from youtube
+# Note : It downloads single file from youtube
+# my-youtube-dl : version-1.1
 
 input_WebURL=""
 format_label=""
 file_nm=""
+
+clipboard_copy="$(xclip -o -selection clipboard)"
+from_clipboard_copy=""
+if [[ $clipboard_copy = *"youtube.com/watch?v="* ]] || [[ $clipboard_copy = *"youtu.be/"* ]]; then
+  from_clipboard_copy="$clipboard_copy"
+fi
 
 mkdir -p ~/YouTube-dl
 cd ~/YouTube-dl
@@ -12,7 +19,7 @@ echo "Could not create directory and change directory"
 exit 1
 fi
 
-input_WebURL="$(zenity  --entry --title "YouTube-DL" --text "Enter url:						" | sed 's/&list=.*//')"
+input_WebURL="$(zenity  --entry --title "YouTube-DL" --text "Enter url:						" --entry-text="$from_clipboard_copy" | sed 's/&list=.*//')"
 if [ -z "${input_WebURL// }" ]; then
 echo "Empty"
 exit 1
