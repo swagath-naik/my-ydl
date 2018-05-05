@@ -1,7 +1,7 @@
 # my-ydl
-my-youtube-dl : Bash script to download single file from youtube.
+*my-youtube-dl :* Bash script to download single file from youtube.
 
-Softwares used:
+*Softwares used:*
 bash
 coreutils
 gawk
