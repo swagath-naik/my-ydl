@@ -9,4 +9,4 @@ zenity
 xclip
 libnotify
 youtube-dl
-aria2c
+aria2
