@@ -10,3 +10,4 @@ xclip
 libnotify
 youtube-dl
 aria2
+atomicparsley
